@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microfinance Mogul: The Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-image: url('https://placehold.co/1920x1080/0f172a/94a3b8.png?text=World+Map');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem; /* 24px */
+        }
+        .option-btn {
+            transition: all 0.3s ease;
+        }
+        .option-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .correct {
+            background-color: #22c55e !important; /* green-500 */
+            color: white;
+            border-color: #16a34a; /* green-600 */
+        }
+        .incorrect {
+            background-color: #ef4444 !important; /* red-500 */
+            color: white;
+            border-color: #dc2626; /* red-600 */
+        }
+        #modal {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div id="game-container" class="w-full max-w-4xl mx-auto">
+        
+        <!-- Game Start Screen -->
+        <div id="start-screen" class="glass-panel p-8 md:p-12 text-center">
+            <h1 class="text-4xl md:text-5xl font-bold mb-4 text-cyan-300">Microfinance Mogul</h1>
+            <p class="text-lg md:text-xl mb-6 text-slate-300">Your mission: Fund entrepreneurs and change the world, one question at a time!</p>
+            <p class="mb-8 text-slate-400">You'll journey through 10 challenges, from basic concepts to complex scenarios. Each correct answer helps a small business owner and contributes to global Sustainable Development Goals. Let's begin!</p>
+            <button id="start-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-105">
+                Start My Mission
+            </button>
+        </div>
+
+        <!-- Main Game UI (Hidden initially) -->
+        <div id="main-game" class="hidden">
+            <div class="glass-panel p-6 md:p-8">
+                <!-- Header with Progress -->
+                <div class="flex flex-col md:flex-row justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-cyan-300 mb-4 md:mb-0">Question <span id="question-number">1</span>/10</h2>
+                    <div class="w-full md:w-1/2">
+                        <p class="text-sm text-slate-300 mb-1">Impact Progress</p>
+                        <div class="bg-slate-700 rounded-full h-4 w-full">
+                            <div id="progress-bar" class="bg-gradient-to-r from-teal-400 to-cyan-500 h-4 rounded-full transition-all duration-500" style="width: 10%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Entrepreneur/Story Section -->
+                <div class="bg-slate-800/50 p-4 rounded-xl mb-6 text-center">
+                    <img id="entrepreneur-img" src="" alt="Entrepreneur" class="w-20 h-20 rounded-full mx-auto mb-3 border-2 border-cyan-400">
+                    <p id="story-text" class="text-slate-300"></p>
+                </div>
+
+                <!-- Question -->
+                <p id="question-text" class="text-xl md:text-2xl font-semibold mb-8 text-center leading-relaxed"></p>
+
+<!-- Answer Options -->
+                <div id="options-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Options will be injected here by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="end-screen" class="hidden glass-panel p-8 md:p-12 text-center">
+             <h1 class="text-4xl md:text-5xl font-bold mb-4 text-green-400">Mission Accomplished!</h1>
+             <p class="text-lg md:text-xl mb-6 text-slate-300">You are a true Microfinance Mogul!</p>
+             <p class="mb-2 text-slate-400">You've successfully answered <span id="final-score"></span> out of 10 questions.</p>
+             <p id="final-message" class="mb-8 text-slate-400"></p>
+             <button id="restart-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transition-transform transform hover:scale-105">
+                 Play Again
+             </button>
+        </div>
+
+    </div>
+
+    <!-- Modal for Explanations -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+        <div class="glass-panel p-8 rounded-2xl max-w-lg w-full text-center">
+            <h3 class="text-2xl font-bold text-red-400 mb-4">Not Quite!</h3>
+            <p id="explanation-text" class="text-slate-300 mb-6"></p>
+            <p class="text-xs text-slate-500 mb-6">This explanation is based on the provided course material.</p>
+            <button id="next-question-btn" class="bg-slate-600 hover:bg-slate-700 text-white font-bold py-2 px-6 rounded-full transition">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const startScreen = document.getElementById('start-screen');
+        const mainGame = document.getElementById('main-game');
+        const endScreen = document.getElementById('end-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const questionNumberEl = document.getElementById('question-number');
+        const progressBar = document.getElementById('progress-bar');
+        const storyText = document.getElementById('story-text');
+        const entrepreneurImg = document.getElementById('entrepreneur-img');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const modal = document.getElementById('modal');
+        const explanationText = document.getElementById('explanation-text');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+        const finalScoreEl = document.getElementById('final-score');
+        const finalMessageEl = document.getElementById('final-message');
+
+// --- Game Data ---
+        const questions = [
+            // Level 1: Easy
+            {
+                story: "Meet Priya from a village in Bangladesh. She wants to buy a sewing machine to start a tailoring business. Your first decision is crucial!",
+                image: "https://placehold.co/100x100/3498db/ffffff?text=Priya",
+                question: "What is the core concept of microfinance?",
+                options: [
+                    "Providing large loans to corporations.",
+                    "Offering financial services like small loans, savings, and insurance to low-income individuals.",
+                    "Only giving money away as charity.",
+                    "Managing stock market investments for the wealthy."
+                ],
+                correctAnswer: 1,
+                explanation: "Microfinance, at its core, is the provision of a diverse array of financial services (not just credit) to low-income individuals who traditionally lack access to banking. This is broader than just small loans (microcredit)."
+            },
+            // Level 2: Easy
+            {
+                story: "Priya got her loan! Her neighbor, Kofi from Ghana, wants to buy fertilizer for his farm. He's heard about the origins of microfinance.",
+                image: "https://placehold.co/100x100/2ecc71/ffffff?text=Kofi",
+                question: "The modern microfinance movement is traced back to the pioneering efforts of Muhammad Yunus and the establishment of which bank?",
+                options: [
+                    "World Bank",
+                    "International Monetary Fund",
+                    "Grameen Bank",
+                    "Bank of America"
+                ],
+                correctAnswer: 2,
+                explanation: "The material states the modern microfinance movement traces its origins to Muhammad Yunus and the establishment of Grameen Bank in Bangladesh during the 1970s."
+            },
+            // Level 3: Medium
+            {
+                story: "Kofi's farm is thriving. Now, you're advising a Microfinance Institution (MFI) in Kenya. They're struggling to balance their goals.",
+                image: "https://placehold.co/100x100/e67e22/ffffff?text=MFI",
+                question: "What is the 'dual mandate' that creates a fundamental tension for Microfinance Institutions (MFIs)?",
+                options: [
+                    "Choosing between rural and urban clients.",
+                    "Deciding between short-term and long-term loans.",
+                    "Balancing their social mission (serving the poorest) with financial sustainability (being profitable).",
+                    "Offering loans versus offering insurance."
+                ],
+                correctAnswer: 2,
+                explanation: "MFIs navigate a tension between their social mission (e.g., improving livelihoods, reducing vulnerability) and the need for financial sustainability to continue their operations without relying on subsidies."
+            },
+            // Level 4: Medium
+            {
+                story: "The Kenyan MFI is stable. In Russia, an MFI is looking to expand. What's a key trend driving growth in the global microfinance market?",
+                image: "https://placehold.co/100x100/9b59b6/ffffff?text=Dimitri",
+                question: "According to the report, which factor is a significant trend reshaping the microfinance industry?",
+                options: [
+                    "A return to traditional, paper-based accounting.",
+                    "Decreased demand from underserved populations.",
+                    "The pervasive digitalization of services, including digital wallets and cloud computing.",
+                    "Shifting focus exclusively to high-income countries."
+                ],
+                correctAnswer: 2,
+                explanation: "Digitalization is a significant trend, including cloud computing, biometrics, embedded payments, and digital wallets, which is transforming the financial landscape and how MFIs operate."
+            },
+
+// Level 5: Medium
+            {
+                story: "Digital tools are helping! You're now comparing operations in France and India. There's a big difference in loan sizes.",
+                image: "https://placehold.co/100x100/e74c3c/ffffff?text=Amelie",
+                question: "How do typical microloans in Emerging Markets (EM) like Bangladesh compare to those in Developed Markets (DM) like the USA?",
+                options: [
+                    "They are much larger in EMs.",
+                    "They are significantly smaller in EMs and focused on basic needs, while larger in DMs and focused on business growth.",
+                    "Loan sizes are identical globally.",
+                    "They are only offered in EMs."
+                ],
+                correctAnswer: 1,
+                explanation: "The text provides examples like an average loan of $400 in Bangladesh versus $14,430 in the USA. EM loans are smaller, for micro-survival, while DM loans are larger, for business expansion."
+            },
+            // Level 6: Hard
+            {
+                story: "Amelie expanded her Paris bakery. You're now working on a policy level to support an SDG.",
+                image: "https://placehold.co/100x100/1abc9c/ffffff?text=SDG",
+                question: "How does microfinance specifically contribute to SDG 5: Gender Equality?",
+                options: [
+                    "By offering loans only to men.",
+                    "By building separate banks for women.",
+                    "By primarily employing women in MFI call centers.",
+                    "By providing women access to financial services, increasing their economic control and decision-making power."
+                ],
+                correctAnswer: 3,
+                explanation: "Microfinance is particularly effective in empowering women (who constitute a majority of borrowers) by giving them greater control over their financial resources, which enhances their social status and decision-making power within households and communities."
+            },
+            // Level 7: Hard
+            {
+                story: "Great policy work! Now, a client in Cambodia, Leakhena, is successful but faces a new risk.",
+                image: "https://placehold.co/100x100/f1c40f/ffffff?text=Leakhena",
+                question: "What is a major drawback or challenge associated with microfinance that can harm borrowers?",
+                options: [
+                    "The interest rates are always zero.",
+                    "The risk of over-indebtedness, where taking on too much debt leads to a debt cycle.",
+                    "Loans are approved too slowly to be useful.",
+                    "MFIs have no way of collecting repayments."
+                ],
+                correctAnswer: 1,
+                explanation: "Over-indebtedness is a significant concern. Borrowers taking on too much debt, sometimes from multiple lenders, can end up in a debt cycle rather than achieving poverty alleviation."
+            },
+            // Level 8: Hard
+            {
+                story: "Leakhena is managing her debt wisely. An entrepreneur in a remote area needs support, but it's costly for the MFI.",
+                image: "https://placehold.co/100x100/34495e/ffffff?text=Remote",
+                question: "The 'Sustainability vs. Outreach Trade-off' highlights a key challenge. What does this trade-off refer to?",
+                options: [
+                    "Using sustainable materials vs. reaching more clients.",
+                    "The tension between reaching the most vulnerable (often costly) and remaining financially viable.",
+                    "Choosing to operate in sustainable industries only.",
+                    "Balancing digital outreach with physical branch outreach."
+                ],
+                correctAnswer: 1,
+explanation: "This trade-off describes the difficulty MFIs face: balancing deep social outreach to the poorest, which is often expensive, with the need to maintain financial sustainability. Maximizing one can compromise the other."
+            },
+            // Level 9: Expert
+             {
+                story: "You are designing two different loan products. One is for starting a small business, the other for buying a household appliance.",
+                image: "https://placehold.co/100x100/d35400/ffffff?text=Products",
+                question: "What is the key difference between 'Business Microfinancing' and 'Consumer Microfinancing'?",
+                options: [
+                    "There is no difference; all micro-loans are the same.",
+                    "Consumer microfinancing is for large corporations.",
+                    "Business microfinancing is for productive investments to generate income, while consumer microfinancing is for immediate household needs.",
+                    "Business microfinancing has higher interest rates."
+                ],
+                correctAnswer: 2,
+                explanation: "Business microfinancing provides loans for productive purposes like buying equipment to create income (impacting SDG 8). Consumer microfinancing helps smooth consumption and manage shocks, like paying for medical care (impacting SDG 1 & 3)."
+            },
+            // Level 10: Expert
+            {
+                story: "Final challenge! You're advising the Central Bank of Russia on their regulatory approach. What is a key feature of their strategy?",
+                image: "https://placehold.co/100x100/c0392b/ffffff?text=CBR",
+                question: "How does the Central Bank of Russia's regulatory approach align with global practices?",
+                options: [
+                    "By having no regulations for the microfinance sector.",
+                    "By implementing measures to limit household over-indebtedness, a challenge faced globally.",
+                    "By banning digitalization and promoting only traditional banking.",
+                    "By only allowing foreign MFIs to operate in the country."
+                ],
+                correctAnswer: 1,
+                explanation: "The CBR's approach includes extending regulatory easing while also implementing measures to limit household over-indebtedness (e.g., reducing TCC limits), which is a proactive stance similar to global efforts to balance growth with consumer protection."
+            }
+        ];
+
+        // --- Game State ---
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        // --- Functions ---
+        function startGame() {
+            currentQuestionIndex = 0;
+            score = 0;
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            mainGame.classList.remove('hidden');
+            showQuestion();
+        }
+
+        function showQuestion() {
+            // Reset options
+            optionsContainer.innerHTML = '';
+            
+            if (currentQuestionIndex < questions.length) {
+                const questionData = questions[currentQuestionIndex];
+                questionNumberEl.textContent = currentQuestionIndex + 1;
+                questionText.textContent = questionData.question;
+                storyText.textContent = questionData.story;
+                entrepreneurImg.src = questionData.image;
+
+                questionData.options.forEach((option, index) => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.classList.add('option-btn', 'w-full', 'p-4', 'bg-slate-700/50', 'text-left', 'rounded-lg', 'border-2', 'border-transparent', 'hover:border-cyan-400', 'hover:bg-slate-700');
+                    button.onclick = () => selectAnswer(index, button);
+                    optionsContainer.appendChild(button);
+                });
+// Update progress bar
+                progressBar.style.width = `${((currentQuestionIndex + 1) / questions.length) * 100}%`;
+            } else {
+                showEndScreen();
+            }
+        }
+
+        function selectAnswer(selectedIndex, button) {
+            const questionData = questions[currentQuestionIndex];
+            const isCorrect = selectedIndex === questionData.correctAnswer;
+            
+            // Disable all buttons after selection
+            const buttons = optionsContainer.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+
+            if (isCorrect) {
+                score++;
+                button.classList.add('correct');
+                // Wait a bit before showing the next question
+                setTimeout(() => {
+                    currentQuestionIndex++;
+                    showQuestion();
+                }, 1000);
+            } else {
+                button.classList.add('incorrect');
+                // Highlight correct answer
+                buttons[questionData.correctAnswer].classList.add('correct');
+                explanationText.textContent = questionData.explanation;
+                // Wait a bit before showing the modal
+                setTimeout(() => {
+                    modal.classList.remove('hidden');
+                    modal.classList.add('opacity-100');
+                }, 1000);
+            }
+        }
+        
+        function showNextQuestionFromModal() {
+            modal.classList.add('hidden');
+            modal.classList.remove('opacity-100');
+            currentQuestionIndex++;
+            showQuestion();
+        }
+
+        function showEndScreen() {
+            mainGame.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            finalScoreEl.textContent = score;
+            if (score > 7) {
+                 finalMessageEl.textContent = "Your expertise has created significant positive impact across the globe. You're a natural leader in finance!";
+            } else if (score > 4) {
+                 finalMessageEl.textContent = "A solid performance! You've helped many entrepreneurs get started. There's always more to learn on the path to becoming a mogul.";
+            } else {
+                 finalMessageEl.textContent = "A good first step into the world of microfinance. Every expert starts somewhere. Try again to increase your impact!";
+            }
+        }
+
+        // --- Event Listeners ---
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', startGame);
+        nextQuestionBtn.addEventListener('click', showNextQuestionFromModal);
+
+    </script>
+
+</body>
+</html>
